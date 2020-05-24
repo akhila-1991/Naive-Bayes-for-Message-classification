@@ -1,0 +1,46 @@
+import pandas as pd
+#REading the input File
+df = pd.read_excel("C:/Users/achillara/Desktop/Naive_Bayes/Final/Input_Data_Files/Multi_Class/Input_File_Multiple_Classes_v1.xlsx")
+#insepcting the contents of file
+df.head()
+#Assining a numeric value to each of the category since python predicts on numberic values
+df['label'] = df['category'].apply(lambda x: 1 if x== 'on_platform_Non_payment'  else 2 if x == 'off_platform_Non_payment' else 3 if x == 'on_platform_payment_issue' else 4)
+#checking if values are being read properly
+df[df['label'] == 4]
+df.count()
+#Splitting data into training and test
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(df['Message'], df['label'], test_size = .20, random_state=1)
+X_train.head()
+#checking the mix of labels with in training set
+y_test[(y_test == 4)].count()
+#converting into matrix that holds of counts of words in each document
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS as esw
+
+cv = CountVectorizer(strip_accents= 'ascii', token_pattern=u'(?ui)\\b\\w*[a-z]+\\w*\\b', lowercase=True, stop_words= ["watch", "thanks" , "thank","please","pls","hello","hi","dear","t","m","s","sir","madam"]+ list(esw))
+X_train_cv = cv.fit_transform(X_train)
+X_test_cv = cv.transform(X_test)
+#checking the top words occuring 
+word_freq_df = pd.DataFrame(X_train_cv.toarray(), columns=cv.get_feature_names())
+top_words_df = pd.DataFrame(word_freq_df.sum()).sort_values(0, ascending=False)
+#Fitting the model 
+from sklearn.naive_bayes import MultinomialNB
+naive_bayes = MultinomialNB()
+naive_bayes.fit(X_train_cv, y_train)
+predictions = naive_bayes.predict(X_test_cv)
+#checking the accuracy
+from sklearn.preprocessing import MultiLabelBinarizer
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+
+print('Accuracy score: ', accuracy_score(y_test, predictions))
+
+#cross Val
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+cm = confusion_matrix(y_test, predictions)
+sns.heatmap(cm/np.sum(cm), fmt='0.1%', annot=True, cmap='Reds',
+).set_ylim([0,4])
+plt.ylabel('predicted label')
